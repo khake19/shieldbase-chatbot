@@ -1,0 +1,199 @@
+ShieldBase Insurance Chatbot — Testing Scenarios
+=================================================
+
+Prerequisites:
+- Backend running: cd backend && source venv/bin/activate && uvicorn main:app --reload --port 8000
+- Frontend running: cd frontend && pnpm dev
+- Open http://localhost:5173 in browser
+
+
+1. RAG Question Flow
+--------------------
+Test: General insurance questions are answered from the knowledge base.
+
+Steps:
+  1. Type: "What coverage levels do you offer?"
+  2. Expected: Bot answers with Basic, Standard, and Comprehensive details.
+
+  3. Type: "How do I file a claim?"
+  4. Expected: Bot answers with claims process info from knowledge base.
+
+  5. Type: "Do you cover motorcycles?"
+  6. Expected: Bot answers yes, references auto insurance coverage.
+
+
+2. Auto Insurance Quote — Full Flow
+------------------------------------
+Test: Complete auto insurance quote from start to finish.
+
+Steps:
+  1. Type: "I want an auto insurance quote"
+  2. Expected: Bot greets and asks for age.
+
+  3. Type: "I'm 28 years old, I drive a 2022 model, clean driving record"
+  4. Expected: Bot extracts 3 fields, shows summary, asks for coverage level.
+
+  5. Type: "comprehensive"
+  6. Expected: Bot generates quote card showing $56.25/month ($675.00/year).
+     Verify: 500 * 1.0 * 0.9 * 1.5 / 12 = $56.25
+
+  7. Type: "adjust"
+  8. Expected: Bot asks what you'd like to change.
+
+  9. Type: "start over"
+  10. Expected: Bot resets and asks which insurance type you want.
+
+
+3. Home Insurance Quote — Full Flow
+------------------------------------
+Test: Complete home insurance quote from start to finish.
+
+Steps:
+  1. Click "New Chat"
+  2. Type: "I want a home insurance quote"
+  3. Expected: Bot greets and asks for property value.
+
+  4. Type: "my property is worth $300,000 its a house"
+  5. Expected: Bot extracts property value and type, asks for coverage level.
+
+  6. Type: "standard"
+  7. Expected: Bot generates quote card showing $75.00/month ($900.00/year).
+     Verify: 300000 * 0.003 * 1.0 * 1.0 / 12 = $75.00
+
+
+4. Life Insurance Quote — Full Flow
+------------------------------------
+Test: Complete life insurance quote from start to finish.
+
+Steps:
+  1. Click "New Chat"
+  2. Type: "I want a life insurance quote"
+  3. Expected: Bot greets and asks for age.
+
+  4. Type: "35"
+  5. Expected: Bot asks for coverage amount.
+
+  6. Type: "500000"
+  7. Expected: Bot asks for health status.
+
+  8. Type: "good"
+  9. Expected: Bot asks for term length.
+
+  10. Type: "20"
+  11. Expected: Bot generates quote card showing $83.33/month ($1,000.00/year).
+      Verify: 500000 * 0.002 * 1.0 * 1.0 * 1.0 / 12 = $83.33
+
+
+5. Mid-Flow Question (Graceful Transition)
+-------------------------------------------
+Test: Asking a question mid-quote preserves quote data and resumes flow.
+
+Steps:
+  1. Click "New Chat"
+  2. Type: "I want a home insurance quote"
+  3. Type: "my property is worth $300,000 its a house"
+  4. Expected: Bot shows summary and asks for coverage level.
+
+  5. Type: "what does comprehensive coverage include?"
+  6. Expected: Bot answers the question via RAG, then says
+     "Now, back to your quote — let's continue where we left off!"
+
+  7. Type: "comprehensive"
+  8. Expected: Bot generates quote with all data preserved (property value + type intact).
+
+
+6. Product Switch — Confirmation Flow
+---------------------------------------
+Test: When user mentions a different insurance type, bot asks to confirm before switching.
+
+Steps:
+  1. Click "New Chat"
+  2. Type: "I want an auto insurance quote"
+  3. Type: "30"
+  4. Expected: Bot records age, asks for vehicle year.
+
+  5. Type: "how about home insurance?"
+  6. Expected: Bot asks: "It sounds like you might want to switch to home insurance.
+     Would you like to start a new home insurance quote, or did you just have
+     a question about home coverage?"
+
+  7. Type: "just a question"
+  8. Expected: Bot answers question about home coverage via RAG, then resumes auto quote.
+
+  9. Type: "2020"
+  10. Expected: Bot continues auto quote, asks for driving history.
+
+
+7. Product Switch — Confirmed
+-------------------------------
+Test: User confirms they want to switch to a different product.
+
+Steps:
+  1. Click "New Chat"
+  2. Type: "I want an auto insurance quote"
+  3. Type: "25"
+  4. Expected: Bot records age, asks for vehicle year.
+
+  5. Type: "actually I want life insurance"
+  6. Expected: Bot asks to confirm switch.
+
+  7. Type: "yes"
+  8. Expected: Bot starts a new life insurance quote, asks for age.
+
+
+8. Product Switch — Denied
+-----------------------------
+Test: User decides to stay with current quote.
+
+Steps:
+  1. Click "New Chat"
+  2. Type: "I want a home insurance quote"
+  3. Type: "$250,000 condo"
+  4. Expected: Bot records details, asks for coverage level.
+
+  5. Type: "what about auto insurance?"
+  6. Expected: Bot asks to confirm switch.
+
+  7. Type: "no"
+  8. Expected: Bot says "No problem! Let's continue with your current quote."
+
+
+9. Casual Messages
+--------------------
+Test: Bot handles casual/conversational messages without repeating itself.
+
+Steps:
+  1. Click "New Chat"
+  2. Type: "hi"
+  3. Type: "nothing"
+  4. Type: "thanks"
+  5. Type: "bye"
+  6. Expected: Each response should be natural and varied, not repetitive.
+
+
+10. Validation Errors
+----------------------
+Test: Invalid data is caught and user is asked to correct it.
+
+Steps:
+  1. Click "New Chat"
+  2. Type: "I want an auto insurance quote"
+  3. Type: "I'm 10 years old"
+  4. Expected: Bot should catch that age 10 is below minimum (16) and ask for correction.
+
+  5. Type: "I want a life insurance quote"
+  6. Wait for coverage amount question.
+  7. Type: "5000"
+  8. Expected: Bot should catch that $5,000 is below minimum ($10,000) and ask for correction.
+
+
+11. New Chat Button
+---------------------
+Test: New Chat button resets the entire conversation.
+
+Steps:
+  1. Start any quote flow and provide some details.
+  2. Click "New Chat"
+  3. Expected: Chat is cleared, welcome screen appears, new session starts.
+  4. Type: "I want a home insurance quote"
+  5. Expected: Fresh quote flow starts with no data from previous session.
