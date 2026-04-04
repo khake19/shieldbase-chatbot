@@ -30,6 +30,8 @@ def rag_responder(state: ChatState) -> ChatState:
 
     prompt = f"""You are ShieldBase Insurance's helpful assistant. Answer the user's question using ONLY the provided context. Be concise, friendly, and accurate. If the context doesn't contain the answer, say you don't have that information and suggest contacting support.
 
+If the user's message is casual/conversational (like "nothing", "no thanks", "bye", "ok", "thanks"), respond naturally — for example "No problem! Feel free to ask if you need anything." Do NOT repeat the same response.
+
 Conversation history:
 {recent_history}
 
