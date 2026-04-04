@@ -18,6 +18,84 @@ def intent_detector(state: ChatState) -> ChatState:
 
     in_quote_flow = state.get("current_mode") == "transactional"
     quote_step = state.get("quote_step")
+    current_insurance_type = state.get("insurance_type")
+
+    # Handle pending switch confirmation
+    pending_switch = state.get("pending_switch")
+    if pending_switch and in_quote_flow:
+        last_lower = last_message.lower().strip()
+        confirm_signals = ["yes", "yeah", "yep", "sure", "ok", "okay", "please",
+                          "do it", "go ahead", "switch", "new quote", "start"]
+        deny_signals = ["no", "nah", "nope", "never mind", "cancel", "keep",
+                       "continue", "stay", "back"]
+
+        if any(s in last_lower for s in confirm_signals):
+            return {
+                **state,
+                "intent": "quote",
+                "current_mode": "transactional",
+                "quote_step": "identify_product",
+                "quote_data": {},
+                "insurance_type": None,
+                "pending_switch": None,
+            }
+        if any(s in last_lower for s in deny_signals):
+            new_messages = list(messages) + [
+                AIMessage(content="No problem! Let's continue with your current quote.")
+            ]
+            return {
+                **state,
+                "intent": "quote",
+                "current_mode": "transactional",
+                "pending_switch": None,
+                "messages": new_messages,
+            }
+
+        # User wants a question answered — route to RAG, keep quote flow
+        question_signals = ["question", "tell me", "explain", "what does",
+                           "what is", "how does", "info", "details", "learn"]
+        if any(s in last_lower for s in question_signals):
+            return {
+                **state,
+                "intent": "question",
+                "pending_switch": None,
+                "pending_question": last_message,
+            }
+
+        # Neither confirm nor deny — clear pending and let normal flow handle it
+        state = {**state, "pending_switch": None}
+
+    # Detect when user mentions a different insurance type mid-flow
+    if in_quote_flow and current_insurance_type:
+        last_lower = last_message.lower()
+        type_keywords = {
+            "auto": ["auto insurance", "car insurance", "vehicle insurance"],
+            "home": ["home insurance", "property insurance", "house insurance"],
+            "life": ["life insurance"],
+        }
+        detected_type = None
+        for ins_type, keywords in type_keywords.items():
+            if ins_type != current_insurance_type and any(kw in last_lower for kw in keywords):
+                detected_type = ins_type
+                break
+
+        if detected_type:
+            type_label = {"auto": "auto", "home": "home", "life": "life"}[detected_type]
+            current_label = {"auto": "auto", "home": "home", "life": "life"}[current_insurance_type]
+            msg = (
+                f"It sounds like you might want to switch to **{type_label} insurance**. "
+                f"You're currently getting a {current_label} insurance quote.\n\n"
+                f"Would you like to **start a new {type_label} insurance quote**, "
+                f"or did you just have a **question about {type_label} coverage**?"
+            )
+            new_messages = list(messages) + [AIMessage(content=msg)]
+            return {
+                **state,
+                "intent": "quote",
+                "current_mode": "transactional",
+                "pending_switch": detected_type,
+                "messages": new_messages,
+            }
 
     # If user is in collect_details step, bias heavily toward "quote"
     # since they're likely providing data for the quote

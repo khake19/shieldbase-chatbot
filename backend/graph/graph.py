@@ -35,6 +35,7 @@ def build_graph():
         {
             "rag_responder": "rag_responder",
             "route_quote_step": "route_quote_step_node",
+            "__end__": END,
         },
     )
 

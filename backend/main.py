@@ -48,6 +48,7 @@ def get_or_create_session(session_id: str) -> ChatState:
             insurance_type=None,
             validation_errors=[],
             pending_question=None,
+            pending_switch=None,
         )
     return sessions[session_id]
 

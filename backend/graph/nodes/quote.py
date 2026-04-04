@@ -126,6 +126,12 @@ JSON:"""
             "quote_step": "validate",
         }
 
+    # Check if no new fields were extracted (user didn't provide useful data)
+    no_new_data = missing_before == missing_after and last_message
+    nudge = ""
+    if no_new_data and quote_data:
+        nudge = f"I didn't catch any new details from that. We're currently working on your **{insurance_type} insurance** quote.\n\n"
+
     next_field = missing_after[0]
     question = f"What is {FIELD_DESCRIPTIONS[next_field]}?"
 
@@ -139,7 +145,7 @@ JSON:"""
         items = [f"  - **{k.replace('_', ' ').title()}**: {v}" for k, v in quote_data.items()]
         collected_summary = "Here's what I have so far:\n" + "\n".join(items) + "\n\n"
 
-    msg = f"{greeting}{collected_summary}{question}"
+    msg = f"{nudge}{greeting}{collected_summary}{question}"
 
     return {
         **state,

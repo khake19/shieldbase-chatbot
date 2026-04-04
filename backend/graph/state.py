@@ -11,3 +11,4 @@ class ChatState(TypedDict):
     insurance_type: str | None  # "auto" | "home" | "life"
     validation_errors: list[str]
     pending_question: str | None
+    pending_switch: str | None  # insurance type user might want to switch to

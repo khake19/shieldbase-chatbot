@@ -2,6 +2,8 @@ from graph.state import ChatState
 
 
 def route_after_intent(state: ChatState) -> str:
+    if state.get("pending_switch"):
+        return "__end__"
     intent = state.get("intent")
     if intent == "question":
         return "rag_responder"
