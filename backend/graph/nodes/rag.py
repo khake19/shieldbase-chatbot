@@ -17,7 +17,7 @@ def rag_responder(state: ChatState) -> ChatState:
     messages = state["messages"]
     last_message = messages[-1].content if messages else ""
 
-    context_chunks = retrieve(last_message, k=3)
+    context_chunks = retrieve(last_message, k=5)
     context = "\n\n---\n\n".join(context_chunks)
 
     recent_history = ""

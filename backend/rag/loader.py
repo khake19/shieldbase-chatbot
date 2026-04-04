@@ -5,7 +5,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 KNOWLEDGE_BASE_DIR = os.path.join(os.path.dirname(__file__), "..", "knowledge_base")
 
 
-def load_and_split_documents(chunk_size: int = 500, chunk_overlap: int = 50):
+def load_and_split_documents(chunk_size: int = 800, chunk_overlap: int = 100):
     loader = DirectoryLoader(
         KNOWLEDGE_BASE_DIR,
         glob="*.md",
