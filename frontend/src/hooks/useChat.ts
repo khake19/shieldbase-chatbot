@@ -42,6 +42,7 @@ export function useChat() {
 
       const decoder = new TextDecoder();
       let fullContent = "";
+      let buffer = "";
 
       // Add empty assistant message
       setMessages((prev) => [
@@ -58,8 +59,10 @@ export function useChat() {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const text = decoder.decode(value, { stream: true });
-        const lines = text.split("\n");
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        // Keep the last (possibly incomplete) line in the buffer
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;

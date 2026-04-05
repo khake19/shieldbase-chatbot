@@ -125,14 +125,15 @@ async def chat_stream(message: str, session_id: str | None = None):
 
             def run_graph():
                 try:
-                    result = None
+                    final_state = dict(state)
                     for event in app_graph.stream(state):
                         node_name = list(event.keys())[0]
-                        result = event[node_name]
+                        node_output = event[node_name]
+                        final_state.update(node_output)
                         loop.call_soon_threadsafe(
-                            aqueue.put_nowait, ("node", node_name, result)
+                            aqueue.put_nowait, ("node", node_name, node_output)
                         )
-                    loop.call_soon_threadsafe(aqueue.put_nowait, ("done", None, result))
+                    loop.call_soon_threadsafe(aqueue.put_nowait, ("done", None, final_state))
                 except Exception as e:
                     loop.call_soon_threadsafe(aqueue.put_nowait, ("error", None, str(e)))
 

@@ -104,8 +104,11 @@ def intent_detector(state: ChatState) -> ChatState:
         last_lower = last_message.lower().strip()
         question_signals = ["what ", "how ", "why ", "when ", "where ", "who ",
                            "can i", "do you", "does ", "is there", "tell me about",
-                           "explain", "?"]
-        is_likely_question = any(last_lower.startswith(q) or last_lower.endswith("?") for q in question_signals)
+                           "explain"]
+        is_likely_question = any(last_lower.startswith(q) for q in question_signals)
+        # Only treat "?" as a question if it's a full sentence (not "basic?" or "30?")
+        if not is_likely_question and last_lower.endswith("?") and len(last_lower.split()) > 3:
+            is_likely_question = True
 
         if not is_likely_question:
             return {**state, "intent": "quote", "current_mode": "transactional"}

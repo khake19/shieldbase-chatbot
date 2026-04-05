@@ -89,14 +89,16 @@ Product:"""
 def quote_collect_details(state: ChatState) -> ChatState:
     insurance_type = state["insurance_type"]
     quote_data = dict(state.get("quote_data", {}))
+    quote_data.pop("monthly_premium", None)  # Remove calculated field
     messages = state["messages"]
     last_message = messages[-1].content if messages else ""
     required = REQUIRED_FIELDS[insurance_type]
 
     missing_before = [f for f in required if f not in quote_data]
 
-    if missing_before and last_message:
-        fields_to_extract = missing_before[:3]
+    if last_message:
+        # Extract missing fields, or all fields if updating (adjust flow)
+        fields_to_extract = missing_before[:3] if missing_before else required
         fields_json = json.dumps({f: FIELD_DESCRIPTIONS[f] for f in fields_to_extract})
 
         prompt = f"""Extract insurance quote details from the user's message. Return a JSON object with only the fields you can confidently extract. Return empty object {{}} if no fields are found.
