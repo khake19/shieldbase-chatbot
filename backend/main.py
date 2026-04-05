@@ -3,10 +3,9 @@ import json
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 
 from graph.state import ChatState
@@ -51,58 +50,6 @@ def get_or_create_session(session_id: str) -> ChatState:
             pending_switch=None,
         )
     return sessions[session_id]
-
-
-class ChatRequest(BaseModel):
-    message: str
-    session_id: str | None = None
-
-
-class ChatResponse(BaseModel):
-    response: str
-    session_id: str
-    current_mode: str
-    insurance_type: str | None = None
-    quote_step: str | None = None
-    quote_data: dict = {}
-
-
-@app.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    session_id = request.session_id or str(uuid.uuid4())
-    state = get_or_create_session(session_id)
-
-    state["messages"] = list(state["messages"]) + [HumanMessage(content=request.message)]
-
-    try:
-        result = await asyncio.to_thread(app_graph.invoke, state)
-    except Exception as e:
-        error_msg = "I'm sorry, I'm having trouble processing your request right now. Please try again in a moment."
-        return ChatResponse(
-            response=error_msg,
-            session_id=session_id,
-            current_mode=state.get("current_mode", "router"),
-        )
-
-    sessions[session_id] = result
-
-    last_ai_message = ""
-    for msg in reversed(result["messages"]):
-        if hasattr(msg, "type") and msg.type == "ai":
-            last_ai_message = msg.content
-            break
-        elif hasattr(msg, "content") and not isinstance(msg, HumanMessage):
-            last_ai_message = msg.content
-            break
-
-    return ChatResponse(
-        response=last_ai_message,
-        session_id=session_id,
-        current_mode=result.get("current_mode", "router"),
-        insurance_type=result.get("insurance_type"),
-        quote_step=result.get("quote_step"),
-        quote_data=result.get("quote_data", {}),
-    )
 
 
 @app.get("/chat/stream")
