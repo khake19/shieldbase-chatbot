@@ -7,6 +7,10 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === "user";
+
+  // Don't render empty assistant bubble (placeholder while loading)
+  if (!isUser && !message.content) return null;
+
   const hasQuote =
     message.content.includes("[QUOTE]") &&
     message.content.includes("[/QUOTE]");
