@@ -454,3 +454,135 @@ body {
     width: 100%;
   }
 }
+
+/* Compact widget (inside iframe < 500px) */
+@media (max-width: 500px) {
+  .header {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .header-logo {
+    width: 28px;
+    height: 28px;
+  }
+
+  .header-title {
+    font-size: 1rem;
+  }
+
+  .header-subtitle {
+    font-size: 0.65rem;
+    margin-left: 4px;
+  }
+
+  .clear-button {
+    padding: 4px 10px;
+    font-size: 0.7rem;
+  }
+
+  .chat-window {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .message-bubble {
+    padding: 8px 12px;
+    font-size: 0.825rem;
+    border-radius: 14px;
+    max-width: 88%;
+  }
+
+  .message-bubble p {
+    margin-bottom: 6px;
+  }
+
+  .welcome-message {
+    padding: 24px 16px;
+    gap: 10px;
+  }
+
+  .welcome-message h2 {
+    font-size: 1.15rem;
+  }
+
+  .welcome-message p {
+    font-size: 0.8rem;
+  }
+
+  .welcome-option {
+    padding: 10px 14px;
+    border-radius: 10px;
+  }
+
+  .welcome-option strong {
+    font-size: 0.8rem;
+  }
+
+  .welcome-option span {
+    font-size: 0.7rem;
+  }
+
+  .quote-card {
+    padding: 14px;
+    border-radius: 10px;
+    margin: 8px 0;
+  }
+
+  .quote-card-header h3 {
+    font-size: 0.9rem;
+  }
+
+  .quote-detail-row {
+    font-size: 0.78rem;
+  }
+
+  .quote-price-amount {
+    font-size: 1.5rem;
+  }
+
+  .quote-card-pricing {
+    padding: 12px;
+  }
+
+  .loading-content {
+    padding: 8px 14px;
+    gap: 8px;
+  }
+
+  .typing-dots span {
+    width: 6px;
+    height: 6px;
+  }
+
+  .processing-stage {
+    font-size: 0.7rem;
+  }
+
+  .chat-input-container {
+    padding: 10px 12px;
+  }
+
+  .chat-input {
+    padding: 8px 12px;
+    font-size: 0.825rem;
+    border-radius: 10px;
+    min-height: 38px;
+    border-width: 1.5px;
+  }
+
+  .chat-input::placeholder {
+    font-size: 0.78rem;
+  }
+
+  .send-button {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+
+  .send-button svg {
+    width: 16px;
+    height: 16px;
+  }
+}

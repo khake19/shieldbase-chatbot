@@ -7,12 +7,12 @@ An AI-powered insurance quotation assistant built with LangGraph, FastAPI, and R
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    Frontend (React)                  │
-│              Chat UI with SSE Streaming              │
+│         Chat UI with SSE Streaming + Stages         │
 └───────────────────┬─────────────────────────────────┘
                     │ HTTP / SSE
 ┌───────────────────▼─────────────────────────────────┐
 │                 FastAPI Server                        │
-│         POST /chat  |  GET /chat/stream               │
+│           GET /chat/stream  (SSE)                     │
 │              Session Management                       │
 └───────────────────┬─────────────────────────────────┘
                     │
@@ -52,6 +52,16 @@ An AI-powered insurance quotation assistant built with LangGraph, FastAPI, and R
 │       google/gemini-2.0-flash-001                     │
 └─────────────────────────────────────────────────────┘
 ```
+
+## Features
+
+- **Dual-mode chat** — RAG-powered Q&A and step-by-step insurance quotation
+- **SSE streaming with processing stages** — real-time status updates ("Understanding your request...", "Searching knowledge base...", etc.)
+- **Inline field validation** — validates each field as it's collected, not in a batch at the end
+- **Graceful mid-flow transitions** — ask a question during a quote and seamlessly resume
+- **Product switch confirmation** — detects when you mention a different insurance type mid-quote and asks before switching
+- **Quote adjustment** — modify fields after a quote is generated without restarting the flow
+- **Embeddable widget** — drop a single `<script>` tag onto any website to add the chatbot
 
 ## Setup
 
@@ -93,6 +103,22 @@ npm run dev
 
 Open http://localhost:5173 in your browser.
 
+## Embeddable Widget
+
+Add a single script tag to any website to embed the chatbot as a floating widget:
+
+```html
+<script src="http://localhost:5173/embed.js" data-shieldbase data-url="http://localhost:5173"></script>
+```
+
+Options via data attributes:
+- `data-url` — chatbot URL (default: `http://localhost:5173`)
+- `data-position` — `bottom-right`, `bottom-left`, `top-right`, or `top-left`
+- `data-color` — primary color hex (default: `#1e3a5f`)
+- `data-title` — widget header title (default: `ShieldBase Chat`)
+
+Open `demo-embed.html` to see a working demo.
+
 ## Usage Examples
 
 **Ask a question:**
@@ -116,34 +142,36 @@ While getting a quote, ask a question like "What does comprehensive coverage inc
 
 3. **State preservation during transitions** — When a user asks a question mid-quote, `quote_data` persists in LangGraph state. No data loss on mode switch.
 
-4. **Field-by-field collection** — Asks one question at a time for better UX. The LLM extracts field values from natural language responses.
+4. **Field-by-field collection with inline validation** — Asks one question at a time for better UX. Each field is validated immediately when extracted, providing instant feedback instead of batching errors at the end.
 
 5. **Local embeddings** — Uses `sentence-transformers/all-MiniLM-L6-v2` locally instead of an API, saving API credits and reducing latency.
 
-6. **SSE streaming** — Responses stream to the frontend in chunks for perceived speed.
+6. **SSE streaming with processing stages** — Responses stream to the frontend in chunks for perceived speed. Each graph node emits a stage indicator so the user sees what's happening behind the scenes.
+
+7. **Inline quote adjustment** — The confirm node handles field changes directly (extracts, validates, recalculates) instead of chaining back through the graph, avoiding infinite loops.
 
 ## API Endpoints
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/chat` | POST | Send message, get full response |
-| `/chat/stream` | GET | Send message, get SSE stream |
+| `/chat/stream` | GET | Send message, get SSE stream with stages + chunks |
 | `/health` | GET | Health check |
 
 ## Project Structure
 
 ```
 shieldbase-chatbot/
+├── demo-embed.html          # Widget embed demo page
 ├── backend/
-│   ├── main.py              # FastAPI app
+│   ├── main.py              # FastAPI app + SSE streaming
 │   ├── graph/
 │   │   ├── state.py          # ChatState TypedDict
 │   │   ├── graph.py          # LangGraph assembly
 │   │   ├── edges.py          # Conditional routing
 │   │   └── nodes/
-│   │       ├── intent.py     # Intent detection
+│   │       ├── intent.py     # Intent detection + switch handling
 │   │       ├── rag.py        # RAG responder
-│   │       └── quote.py      # Quote flow nodes
+│   │       └── quote.py      # Quote flow nodes + validation
 │   ├── rag/
 │   │   ├── loader.py         # Document loading
 │   │   └── vectorstore.py    # FAISS + embeddings
@@ -151,6 +179,9 @@ shieldbase-chatbot/
 │   └── utils/
 │       └── llm.py            # OpenRouter wrapper
 └── frontend/
+    ├── public/
+    │   ├── embed.js           # Embeddable widget script
+    │   └── shieldbase-logo.svg
     └── src/
         ├── App.tsx
         ├── components/        # Chat UI components

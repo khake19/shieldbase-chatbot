@@ -37,7 +37,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Ask about our insurance plans or get a quote..."
+        placeholder="Type a message..."
         disabled={disabled}
         rows={1}
       />
