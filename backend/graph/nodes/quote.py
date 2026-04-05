@@ -435,6 +435,23 @@ def quote_confirm(state: ChatState) -> ChatState:
             "messages": _append_message(state, msg),
         }
 
+    if any(word in last_lower for word in ["accept", "proceed", "enroll", "yes", "sure", "go ahead", "sign up"]):
+        type_label = {"auto": "Auto", "home": "Home", "life": "Life"}[insurance_type]
+        annual = round(monthly * 12, 2)
+        msg = (
+            f"Your **{type_label} Insurance** quote of **${monthly:,.2f}/month** (${annual:,.2f}/year) has been submitted!\n\n"
+            "A ShieldBase representative will contact you within 1-2 business days to finalize your enrollment.\n\n"
+            "Is there anything else I can help you with?"
+        )
+        return {
+            **state,
+            "current_mode": "router",
+            "quote_step": None,
+            "quote_data": {},
+            "insurance_type": None,
+            "messages": _append_message(state, msg),
+        }
+
     if any(word in last_lower for word in ["adjust", "change", "modify", "update"]):
         msg = "Sure! What would you like to change about your quote? You can update any of the details you provided earlier."
         return {
