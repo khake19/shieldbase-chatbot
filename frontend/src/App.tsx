@@ -4,7 +4,7 @@ import { useChat } from "./hooks/useChat";
 import "./styles/chat.css";
 
 function App() {
-  const { messages, isLoading, sendMessage, clearChat } = useChat();
+  const { messages, isLoading, processingStage, sendMessage, clearChat } = useChat();
 
   return (
     <div className="app">
@@ -25,7 +25,7 @@ function App() {
         </div>
       </header>
 
-      <ChatWindow messages={messages} isLoading={isLoading} />
+      <ChatWindow messages={messages} isLoading={isLoading} processingStage={processingStage} />
 
       <div className="chat-input-container">
         <ChatInput onSend={sendMessage} disabled={isLoading} />

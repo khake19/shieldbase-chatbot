@@ -6,9 +6,10 @@ import { LoadingIndicator } from "./LoadingIndicator";
 interface ChatWindowProps {
   messages: Message[];
   isLoading: boolean;
+  processingStage?: string | null;
 }
 
-export function ChatWindow({ messages, isLoading }: ChatWindowProps) {
+export function ChatWindow({ messages, isLoading, processingStage }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export function ChatWindow({ messages, isLoading }: ChatWindowProps) {
         <MessageBubble key={msg.id} message={msg} />
       ))}
 
-      {isLoading && <LoadingIndicator />}
+      {isLoading && <LoadingIndicator stage={processingStage} />}
 
       <div ref={bottomRef} />
     </div>

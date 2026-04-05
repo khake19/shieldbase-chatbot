@@ -116,8 +116,57 @@ async def chat_stream(message: str, session_id: str | None = None):
         yield f"data: {json.dumps({'type': 'session', 'session_id': session_id})}\n\n"
         yield f"data: {json.dumps({'type': 'start'})}\n\n"
 
+        # Show first stage immediately — user sees this while intent_detector runs
+        yield f"data: {json.dumps({'type': 'stage', 'content': 'Understanding your request...'})}\n\n"
+
         try:
-            result = await asyncio.to_thread(app_graph.invoke, state)
+            aqueue: asyncio.Queue = asyncio.Queue()
+            loop = asyncio.get_running_loop()
+
+            def run_graph():
+                try:
+                    result = None
+                    for event in app_graph.stream(state):
+                        node_name = list(event.keys())[0]
+                        result = event[node_name]
+                        loop.call_soon_threadsafe(
+                            aqueue.put_nowait, ("node", node_name, result)
+                        )
+                    loop.call_soon_threadsafe(aqueue.put_nowait, ("done", None, result))
+                except Exception as e:
+                    loop.call_soon_threadsafe(aqueue.put_nowait, ("error", None, str(e)))
+
+            loop.run_in_executor(None, run_graph)
+
+            result = None
+            while True:
+                msg_type, node_name, data = await aqueue.get()
+                if msg_type == "node":
+                    # When a node finishes, show what's about to happen NEXT
+                    label = None
+                    if node_name == "intent_detector":
+                        intent = data.get("intent") if data else None
+                        if intent == "question":
+                            label = "Searching knowledge base..."
+                        elif intent == "quote":
+                            label = "Processing your quote..."
+                    elif node_name == "quote_identify_product":
+                        label = "Collecting your information..."
+                    elif node_name == "quote_collect_details":
+                        label = "Validating your details..."
+                    elif node_name == "quote_validate":
+                        label = "Calculating your premium..."
+                    elif node_name == "quote_generate":
+                        label = "Preparing your quote summary..."
+                    if label:
+                        yield f"data: {json.dumps({'type': 'stage', 'content': label})}\n\n"
+                elif msg_type == "done":
+                    result = data
+                    break
+                elif msg_type == "error":
+                    yield f"data: {json.dumps({'type': 'error', 'content': 'Sorry, something went wrong. Please try again.'})}\n\n"
+                    return
+
             sessions[session_id] = result
 
             last_ai_message = ""
@@ -130,6 +179,7 @@ async def chat_stream(message: str, session_id: str | None = None):
                     break
 
             # Stream the response in chunks for a typing effect
+            yield f"data: {json.dumps({'type': 'stage', 'content': 'Generating response...'})}\n\n"
             chunk_size = 15
             for i in range(0, len(last_ai_message), chunk_size):
                 chunk = last_ai_message[i : i + chunk_size]

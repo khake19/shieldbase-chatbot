@@ -6,6 +6,7 @@ const API_BASE = "http://localhost:8000";
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [processingStage, setProcessingStage] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
 
   const sendMessage = useCallback(async (content: string) => {
@@ -18,6 +19,7 @@ export function useChat() {
 
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+    setProcessingStage(null);
 
     const assistantId = crypto.randomUUID();
 
@@ -69,7 +71,10 @@ export function useChat() {
 
             if (event.type === "session" && event.session_id) {
               sessionIdRef.current = event.session_id;
+            } else if (event.type === "stage" && event.content) {
+              setProcessingStage(event.content);
             } else if (event.type === "chunk" && event.content) {
+              setProcessingStage(null);
               fullContent += event.content;
               setMessages((prev) =>
                 prev.map((msg) =>
@@ -108,6 +113,7 @@ export function useChat() {
       );
     } finally {
       setIsLoading(false);
+      setProcessingStage(null);
     }
   }, []);
 
@@ -116,5 +122,5 @@ export function useChat() {
     sessionIdRef.current = null;
   }, []);
 
-  return { messages, isLoading, sendMessage, clearChat };
+  return { messages, isLoading, processingStage, sendMessage, clearChat };
 }

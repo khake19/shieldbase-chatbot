@@ -15,7 +15,7 @@ export interface ChatResponseData {
 }
 
 export interface SSEEvent {
-  type: "session" | "start" | "chunk" | "end" | "error";
+  type: "session" | "start" | "chunk" | "end" | "error" | "stage";
   content?: string;
   session_id?: string;
   current_mode?: string;

@@ -301,15 +301,21 @@ body {
   padding: 4px 0;
 }
 
-.typing-dots {
+.loading-content {
   display: flex;
-  gap: 5px;
+  align-items: center;
+  gap: 10px;
   padding: 12px 18px;
   background: var(--bg-white);
   border-radius: 16px;
   border-bottom-left-radius: 4px;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
+}
+
+.typing-dots {
+  display: flex;
+  gap: 5px;
 }
 
 .typing-dots span {
@@ -326,6 +332,12 @@ body {
 
 .typing-dots span:nth-child(3) {
   animation-delay: 0.4s;
+}
+
+.processing-stage {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  animation: fadeIn 0.3s ease;
 }
 
 /* Chat Input */
