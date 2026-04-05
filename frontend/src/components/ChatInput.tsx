@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -7,6 +7,12 @@ interface ChatInputProps {
 
 export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-focus on mount and after sending (when disabled goes from true → false)
+  useEffect(() => {
+    if (!disabled) inputRef.current?.focus();
+  }, [disabled]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -26,6 +32,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   return (
     <form className="chat-input-form" onSubmit={handleSubmit}>
       <textarea
+        ref={inputRef}
         className="chat-input"
         value={input}
         onChange={(e) => setInput(e.target.value)}
