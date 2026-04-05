@@ -26,6 +26,19 @@ FIELD_DESCRIPTIONS = {
 }
 
 
+FIELD_VALIDATORS = {
+    "age": lambda v: (int(v), "Age must be between 16 and 120." if not (16 <= int(v) <= 120) else None),
+    "vehicle_year": lambda v: (int(v), f"Vehicle year must be between 1900 and {datetime.now().year}." if not (1900 <= int(v) <= datetime.now().year) else None),
+    "property_value": lambda v: (float(str(v).replace(",", "").replace("$", "")), "Property value must be a positive number." if float(str(v).replace(",", "").replace("$", "")) <= 0 else None),
+    "coverage_amount": lambda v: (float(str(v).replace(",", "").replace("$", "")), "Coverage amount must be at least $10,000." if float(str(v).replace(",", "").replace("$", "")) < 10000 else None),
+    "term_length": lambda v: (int(v), "Term length must be 10, 20, or 30 years." if int(v) not in (10, 20, 30) else None),
+    "coverage_level": lambda v: (str(v).lower(), "Coverage level must be basic, standard, or comprehensive." if str(v).lower() not in ("basic", "standard", "comprehensive") else None),
+    "driving_history": lambda v: (str(v).lower(), "Driving history must be clean, minor, or major." if str(v).lower() not in ("clean", "minor", "major") else None),
+    "property_type": lambda v: (str(v).lower(), "Property type must be house, condo, or apartment." if str(v).lower() not in ("house", "condo", "apartment") else None),
+    "health_status": lambda v: (str(v).lower(), "Health status must be excellent, good, fair, or poor." if str(v).lower() not in ("excellent", "good", "fair", "poor") else None),
+}
+
+
 def _get_llm():
     global _llm
     if _llm is None:
@@ -116,6 +129,82 @@ JSON:"""
                         quote_data[key] = value
             except json.JSONDecodeError:
                 pass
+
+    # Fallback: if LLM didn't extract the expected field, try direct parsing
+    still_missing = [f for f in required if f not in quote_data]
+    if missing_before and still_missing and missing_before[0] == still_missing[0] and last_message:
+        expected_field = missing_before[0]
+        raw = last_message.strip().lower().replace("$", "").replace(",", "")
+
+        parsed_value = None
+        if expected_field in ("age", "vehicle_year", "term_length"):
+            num_match = re.search(r'\d+', raw)
+            if num_match:
+                parsed_value = int(num_match.group())
+        elif expected_field in ("property_value", "coverage_amount"):
+            num_match = re.search(r'[\d.]+', raw)
+            if num_match:
+                parsed_value = float(num_match.group())
+        elif expected_field == "driving_history":
+            for val in ("clean", "minor", "major"):
+                if val in raw:
+                    parsed_value = val
+                    break
+        elif expected_field == "coverage_level":
+            for val in ("basic", "standard", "comprehensive"):
+                if val in raw:
+                    parsed_value = val
+                    break
+        elif expected_field == "property_type":
+            for val in ("house", "condo", "apartment"):
+                if val in raw:
+                    parsed_value = val
+                    break
+        elif expected_field == "health_status":
+            for val in ("excellent", "good", "fair", "poor"):
+                if val in raw:
+                    parsed_value = val
+                    break
+
+        if parsed_value is not None:
+            quote_data[expected_field] = parsed_value
+
+    # Inline validation: check newly extracted fields immediately
+    inline_errors = []
+    for field in list(quote_data.keys()):
+        if field not in missing_before:
+            continue  # Skip fields that were already collected before this turn
+        validator = FIELD_VALIDATORS.get(field)
+        if validator:
+            try:
+                converted, error = validator(quote_data[field])
+                if error:
+                    inline_errors.append(error)
+                    quote_data.pop(field)
+                else:
+                    quote_data[field] = converted
+            except (ValueError, TypeError):
+                quote_data.pop(field)
+                inline_errors.append(f"Please provide a valid value for {FIELD_DESCRIPTIONS[field]}.")
+
+    if inline_errors:
+        error_msg = "\n".join(f"- {e}" for e in inline_errors)
+        # Re-ask for the same field(s)
+        still_needed = [f for f in required if f not in quote_data]
+        next_field = still_needed[0] if still_needed else required[0]
+        question = f"What is {FIELD_DESCRIPTIONS[next_field]}?"
+
+        collected_summary = ""
+        if quote_data:
+            items = [f"  - **{k.replace('_', ' ').title()}**: {v}" for k, v in quote_data.items()]
+            collected_summary = "Here's what I have so far:\n" + "\n".join(items) + "\n\n"
+
+        msg = f"{error_msg}\n\n{collected_summary}{question}"
+        return {
+            **state,
+            "quote_data": quote_data,
+            "messages": _append_message(state, msg),
+        }
 
     missing_after = [f for f in required if f not in quote_data]
 
