@@ -34,9 +34,9 @@ def intent_detector(state: ChatState) -> ChatState:
                 **state,
                 "intent": "quote",
                 "current_mode": "transactional",
-                "quote_step": "identify_product",
+                "quote_step": "collect_details",
                 "quote_data": {},
-                "insurance_type": None,
+                "insurance_type": pending_switch,
                 "pending_switch": None,
             }
         if any(s in last_lower for s in deny_signals):
@@ -119,7 +119,8 @@ Rules:
 - "quote" = user wants an insurance quote, pricing, to buy insurance, OR is providing details for a quote (age, vehicle year, coverage level like basic/standard/comprehensive, driving history, property info, health status, etc.)
 - "question" = user is asking a factual/informational question about insurance
 - If the user is currently in a quote flow and gives a short answer (like "standard", "30", "clean", "house"), that's "quote" — they're providing details
-- Only classify as "question" if the user is clearly asking for information, not providing data
+- If the user just names an insurance type (e.g., "auto", "home insurance", "life"), classify as "quote" — they want to get a quote
+- Only classify as "question" if the user is clearly asking for information with question words (what, how, why, tell me about, explain, etc.)
 
 User is {"currently in a quote flow providing details" if in_quote_flow else "not in a quote flow"}.
 User message: {last_message}

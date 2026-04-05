@@ -353,10 +353,7 @@ def quote_validate(state: ChatState) -> ChatState:
     }
 
 
-def quote_generate(state: ChatState) -> ChatState:
-    quote_data = state["quote_data"]
-    insurance_type = state["insurance_type"]
-
+def _calculate_premium(quote_data: dict, insurance_type: str) -> float:
     if insurance_type == "auto":
         base = 500
         age = quote_data["age"]
@@ -373,7 +370,7 @@ def quote_generate(state: ChatState) -> ChatState:
         coverage = quote_data["coverage_level"]
         coverage_factor = {"basic": 0.8, "standard": 1.0, "comprehensive": 1.5}[coverage]
 
-        monthly = base * age_factor * history_factor * coverage_factor / 12
+        return round(base * age_factor * history_factor * coverage_factor / 12, 2)
 
     elif insurance_type == "home":
         property_value = quote_data["property_value"]
@@ -385,7 +382,7 @@ def quote_generate(state: ChatState) -> ChatState:
         coverage = quote_data["coverage_level"]
         coverage_factor = {"basic": 0.7, "standard": 1.0, "comprehensive": 1.4}[coverage]
 
-        monthly = base * type_factor * coverage_factor / 12
+        return round(base * type_factor * coverage_factor / 12, 2)
 
     elif insurance_type == "life":
         coverage_amount = quote_data["coverage_amount"]
@@ -405,11 +402,16 @@ def quote_generate(state: ChatState) -> ChatState:
         term = quote_data["term_length"]
         term_factor = {10: 0.8, 20: 1.0, 30: 1.3}[term]
 
-        monthly = base * age_factor * health_factor * term_factor / 12
-    else:
-        monthly = 0
+        return round(base * age_factor * health_factor * term_factor / 12, 2)
 
-    monthly = round(monthly, 2)
+    return 0
+
+
+def quote_generate(state: ChatState) -> ChatState:
+    quote_data = state["quote_data"]
+    insurance_type = state["insurance_type"]
+
+    monthly = _calculate_premium(quote_data, insurance_type)
     quote_data["monthly_premium"] = monthly
 
     return {
@@ -455,12 +457,84 @@ def quote_confirm(state: ChatState) -> ChatState:
         }
 
     if any(word in last_lower for word in ["adjust", "change", "modify", "update"]):
-        msg = "Sure! What would you like to change about your quote? You can update any of the details you provided earlier."
-        return {
-            **state,
-            "quote_step": "collect_details",
-            "messages": _append_message(state, msg),
-        }
+        if len(last_message.split()) <= 2:
+            # Just the keyword (e.g. "adjust"), ask what to change
+            msg = "Sure! What would you like to change about your quote? You can update any of the details you provided earlier."
+            return {
+                **state,
+                "quote_step": "collect_details",
+                "messages": _append_message(state, msg),
+            }
+
+        # User included details (e.g. "change property type to condo") — extract inline
+        required = REQUIRED_FIELDS[insurance_type]
+        fields_json = json.dumps({f: FIELD_DESCRIPTIONS[f] for f in required})
+        prompt = f"""Extract insurance quote details from the user's message. Return a JSON object with only the fields you can confidently extract. Return empty object {{}} if no fields are found.
+
+Fields to look for: {fields_json}
+
+Valid values:
+- driving_history: "clean", "minor", or "major"
+- coverage_level: "basic", "standard", or "comprehensive"
+- property_type: "house", "condo", or "apartment"
+- health_status: "excellent", "good", "fair", or "poor"
+- term_length: 10, 20, or 30 (number)
+- age, vehicle_year: integer numbers
+- property_value, coverage_amount: numeric values (remove $ and commas)
+
+User message: {last_message}
+
+JSON:"""
+        llm = _get_llm()
+        response = llm.invoke([HumanMessage(content=prompt)])
+        raw = response.content.strip()
+        json_match = re.search(r'\{[^{}]*\}', raw)
+        updated = False
+        if json_match:
+            try:
+                extracted = json.loads(json_match.group())
+                for key, value in extracted.items():
+                    if key in required and value is not None and value != "":
+                        quote_data[key] = value
+                        updated = True
+            except json.JSONDecodeError:
+                pass
+
+        if updated:
+            # Validate the updated fields
+            for field in list(quote_data.keys()):
+                validator = FIELD_VALIDATORS.get(field)
+                if validator:
+                    try:
+                        converted, error = validator(quote_data[field])
+                        if error:
+                            msg = f"- {error}\n\nPlease provide a valid value."
+                            return {
+                                **state,
+                                "quote_step": "collect_details",
+                                "messages": _append_message(state, msg),
+                            }
+                        quote_data[field] = converted
+                    except (ValueError, TypeError):
+                        msg = f"Please provide a valid value for {FIELD_DESCRIPTIONS.get(field, field)}."
+                        return {
+                            **state,
+                            "quote_step": "collect_details",
+                            "messages": _append_message(state, msg),
+                        }
+
+            # Recalculate premium and show updated quote
+            quote_data.pop("monthly_premium", None)
+            monthly = _calculate_premium(quote_data, insurance_type)
+            quote_data["monthly_premium"] = monthly
+            # Fall through to display the updated quote below
+        else:
+            msg = "I couldn't identify what you'd like to change. Could you be more specific about which field to update?"
+            return {
+                **state,
+                "quote_step": "collect_details",
+                "messages": _append_message(state, msg),
+            }
 
     type_label = {"auto": "Auto", "home": "Home", "life": "Life"}[insurance_type]
     annual = round(monthly * 12, 2)
